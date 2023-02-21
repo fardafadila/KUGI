@@ -75,6 +75,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         # dapatkan list field dari layer yang dipilih
         field_names = [field.name() for field in prov.fields()]
         self.fieldTable.clear()
+
         # buat list nama dan tipe field
         self.namaField = []
         tipeData = []
@@ -118,7 +119,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.unsurCombo.currentTextChanged.connect(self.getUnsurCombo)
         self.unsurCombo.currentTextChanged.connect(self.populateCombo)
         self.runButton.clicked.connect(self.set_att_value)
-        self.cancelButton.clicked.connect(self.get_matched)
+        self.cancelButton.clicked.connect(self.coba_rename)
     
     def changeKategori(self):
         # buat list daftar id kategori
@@ -319,7 +320,23 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             text = textFull.split(" ")[0]
             self.matchedList.append(text)
         self.zipField = dict(zip(self.namaField,self.matchedList))
-        print (self.zipField)
+        return (self.zipField)
+
+    def coba_rename(self):
+        layer = self.inputCombo.currentLayer()
+        prov = layer.dataProvider()
+        field_names = [field.name() for field in prov.fields()]
+        fields = layer.dataProvider().fields()
+        print (fields)
+        for field in fields:
+            print ("desa")
+            print (field.name)
+            if field.name() == 'DESA':
+                layer.startEditing()
+                idx = field_names.index("DESA")
+                layer.renameAttribute(idx, 'new_FIELD123')
+                print ("jalan")
+        layer.commitChanges()
 
     def adding_attributes(self):
         #run = self.get_matched()
@@ -327,20 +344,66 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         layerAwal = self.inputCombo.currentLayer()
         layer = layerAwal.materialize(QgsFeatureRequest().setFilterFids(layerAwal.allFeatureIds()))
         num = 0
-        cobaMatch = self.zipField()
-        for x, y in attDict.items():
-            num += 1
-            if y == "Integer":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
-            elif y == "Int64":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Int64)])
-            elif y == "Double":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Double)])
-            elif y == "String":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.String)])
-            elif y == "Date":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Date)])
+        kolomBaru = self.get_matched()
+        print (kolomBaru)
+        notMatched = "-"
+        listAtribut = self.matchedList
+        #print (listAtribut)
+        listRename = []
+        for item in listAtribut:
+            if item != "-":
+                listRename.append(item)
+        #print(listRename)
+        listAdd = attDict
+        for key in listRename:
+            if key in attDict:
+                del listAdd[key]
+        #print (listAdd) 
+        for awal, akhir in kolomBaru.items():
+            if akhir != notMatched:
+                print ("jalan")
+                prov = layer.dataProvider()
+                field_names = [field.name() for field in prov.fields()]
+                fields = layer.dataProvider().fields()
+                print (fields)
+                for field in fields:
+                    print ("masuk")
+                    print (awal)
+                    self.namaFieldRename = []
+                    jumlah_field = 0
+                    for count, f in enumerate(field_names):
+                        self.namaFieldRename.append(f)
+                        jumlah_field +=1
+                    print (self.namaFieldRename)
+                    if field.name() == awal:
+                        layer.startEditing()
+                        idx = field_names.index(awal)
+                        layer.renameAttribute(idx, akhir)
+                        print ("jalan rename")
+            print ('add layer')                
+            for x, y in listAdd.items():
+                num += 1
+                if y == "Integer":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
+                elif y == "Int64":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Int64)])
+                elif y == "Double":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Double)])
+                elif y == "String":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.String)])
+                elif y == "Date":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Date)])
+                #print ("List field yang ditambahkan: " + x)
         layer.commitChanges()
+        self.listFieldKugi = []
+        prov = layer.dataProvider()
+        field_names_akhir = [field.name() for field in prov.fields()]
+        #masukin nama dan tipe field ke list
+        jumlah_fieldAkhir = 0
+        for count, f in enumerate(field_names_akhir):
+            self.listFieldKugi.append(f)
+            jumlah_fieldAkhir +=1
+        #print (self.listFieldKugi)
         return (layer)
 
     def set_att_value (self):
@@ -348,7 +411,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         attDict,_, _ = self.getStrukturList()
         _, inputKode, _ = self.getStrukturList()
         fcode = str(inputKode)
-        feats_count = layer.featureCount()
         layer.startEditing()
         prov = layer.dataProvider()
         crsLayer1 = layer.crs()
@@ -356,7 +418,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         field_names = [field.name() for field in prov.fields()]
         for count, f in enumerate(field_names):
             self.namaField.append(f)
-        for x in self.namaField:
+        for x in self.listFieldKugi:
             if  x== "FCODE":
                 layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
                 field_idx = layer.fields().indexOf('FCODE')
