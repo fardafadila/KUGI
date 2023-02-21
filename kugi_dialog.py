@@ -76,13 +76,13 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         field_names = [field.name() for field in prov.fields()]
         self.fieldTable.clear()
         #buat list nama dan tipe field
-        namaField = []
+        self.namaField = []
         tipeData = []
         #hitung ada berapa field 
         jumlah_field = 0
         #masukin nama dan tipe field ke list
         for count, f in enumerate(field_names):
-            namaField.append(f)
+            self.namaField.append(f)
             jumlah_field +=1
         for field in layer.fields():
             tipe_data = field.typeName()
@@ -97,7 +97,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.fieldTable.setRowCount(jumlah_field)
         for index in range(jumlah_field):
             #buat list item1 untuk nama field
-            item1 = QtWidgets.QTableWidgetItem(namaField[index])
+            item1 = QtWidgets.QTableWidgetItem(self.namaField[index])
             #masukkan nama field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,0,item1)
             #buat list item2 untuk tipe field
@@ -118,7 +118,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.unsurCombo.currentTextChanged.connect(self.getUnsurCombo)
         self.unsurCombo.currentTextChanged.connect(self.populateCombo)
         self.runButton.clicked.connect(self.set_att_value)
-        self.cancelButton.clicked.connect(self.get_matched)
+        self.cancelButton.clicked.connect(self.coba_rename)
     
     def changeKategori(self):
         #buat list daftar id kategori
@@ -254,12 +254,12 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         
     def makeCombo(self):
         jumlah_field = self.populateTable()
-        listCombo = []
+        self.listCombo= []
         for index in range(jumlah_field):
             combo = QtWidgets.QComboBox()
-            listCombo.append(combo)
+            self.listCombo.append(combo)
             self.fieldTable.setCellWidget(index,2,combo)
-        return(listCombo)    
+        return(self.listCombo)    
     
     def getStrukturList(self):
         dialog, label = self.progdialog()
@@ -303,46 +303,105 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             else :
                 for t in displayDaftarStruktur:
                     listComboCoba =[]
-
                     for listCombo in combo:
                         listCombo.addItem(t)
-                        listComboCoba.append(listCombo)
-                    
+                        listComboCoba.append(listCombo)                    
             self.fieldTable.setCellWidget(index,2,listCombo)
         return(listComboCoba)
 
+    
     def get_matched (self):
-        combo2 = self.populateCombo()
-        listCurrentText= []
-        for item in combo2:
-            text = item.currentText()
-            listCurrentText.append(text)
-        print (listCurrentText)
+        #combo2 = self.populateCombo()
+        self.matchedList= []
+        listCombo2 = self.listCombo
+        for item in listCombo2:
+            textFull = item.currentText()
+            text = textFull.split(" ")[0]
+            self.matchedList.append(text)
+        self.zipField = dict(zip(self.namaField,self.matchedList))
+        return (self.zipField)
 
-    def layerBaru (self):
-        layerAwal = self.inputCombo.currentLayer()
-        layer = layerAwal.materialize(QgsFeatureRequest().setFilterFids(layerAwal.allFeatureIds()))
-        return(layer)
-        
+    def coba_rename(self):
+        layer = self.inputCombo.currentLayer()
+        prov = layer.dataProvider()
+        field_names = [field.name() for field in prov.fields()]
+        fields = layer.dataProvider().fields()
+        print (fields)
+        for field in fields:
+            print ("desa")
+            print (field.name)
+            if field.name() == 'DESA':
+                layer.startEditing()
+                idx = field_names.index("DESA")
+                layer.renameAttribute(idx, 'new_FIELD123')
+                print ("jalan")
+        layer.commitChanges()
     def adding_attributes(self):
         #run = self.get_matched()
         attDict,_, _ = self.getStrukturList()
         layerAwal = self.inputCombo.currentLayer()
         layer = layerAwal.materialize(QgsFeatureRequest().setFilterFids(layerAwal.allFeatureIds()))
         num = 0
-        for x, y in attDict.items():
-            num += 1
-            if y == "Integer":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
-            elif y == "Int64":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Int64)])
-            elif y == "Double":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Double)])
-            elif y == "String":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.String)])
-            elif y == "Date":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Date)])
+        kolomBaru = self.get_matched()
+        print (kolomBaru)
+        notMatched = "-"
+        listAtribut = self.matchedList
+        #print (listAtribut)
+        listRename = []
+        for item in listAtribut:
+            if item != "-":
+                listRename.append(item)
+        #print(listRename)
+        listAdd = attDict
+        for key in listRename:
+            if key in attDict:
+                del listAdd[key]
+        #print (listAdd) 
+        for awal, akhir in kolomBaru.items():
+            if akhir != notMatched:
+                print ("jalan")
+                prov = layer.dataProvider()
+                field_names = [field.name() for field in prov.fields()]
+                fields = layer.dataProvider().fields()
+                print (fields)
+                for field in fields:
+                    print ("masuk")
+                    print (awal)
+                    self.namaFieldRename = []
+                    jumlah_field = 0
+                    for count, f in enumerate(field_names):
+                        self.namaFieldRename.append(f)
+                        jumlah_field +=1
+                    print (self.namaFieldRename)
+                    if field.name() == awal:
+                        layer.startEditing()
+                        idx = field_names.index(awal)
+                        layer.renameAttribute(idx, akhir)
+                        print ("jalan rename")
+            print ('add layer')                
+            for x, y in listAdd.items():
+                num += 1
+                if y == "Integer":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
+                elif y == "Int64":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Int64)])
+                elif y == "Double":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Double)])
+                elif y == "String":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.String)])
+                elif y == "Date":
+                    layer.dataProvider().addAttributes([QgsField(x, QVariant.Date)])
+                #print ("List field yang ditambahkan: " + x)
         layer.commitChanges()
+        self.listFieldKugi = []
+        prov = layer.dataProvider()
+        field_names_akhir = [field.name() for field in prov.fields()]
+        #masukin nama dan tipe field ke list
+        jumlah_fieldAkhir = 0
+        for count, f in enumerate(field_names_akhir):
+            self.listFieldKugi.append(f)
+            jumlah_fieldAkhir +=1
+        #print (self.listFieldKugi)
         return (layer)
 
     def set_att_value (self):
@@ -350,16 +409,14 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         attDict,_, _ = self.getStrukturList()
         _, inputKode, _ = self.getStrukturList()
         fcode = str(inputKode)
-        feats_count = layer.featureCount()
         layer.startEditing()
         prov = layer.dataProvider()
         crsLayer1 = layer.crs()
         crsLayer = str(crsLayer1).strip('<QgsCoordinateReferenceSystem: EPSG:>')
         field_names = [field.name() for field in prov.fields()]
-        namaField = []
         for count, f in enumerate(field_names):
-            namaField.append(f)
-        for x in namaField:
+            self.namaField.append(f)
+        for x in self.listFieldKugi:
             if  x== "FCODE":
                 layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
                 field_idx = layer.fields().indexOf('FCODE')
@@ -390,5 +447,4 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         return(self.saveEdit.text())
 
 
-    
-
+   
