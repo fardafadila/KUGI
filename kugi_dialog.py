@@ -30,13 +30,24 @@ from time import time, gmtime, strftime
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.utils import iface
-from qgis.PyQt.QtCore import QAbstractTableModel, QVariant, QStringListModel, pyqtSignal
-from qgis.core import QgsVectorLayerCache, QgsFeatureRequest, QgsField, QgsProject,QgsWkbTypes
-from qgis.gui import (QgsAttributeTableModel,
-                      QgsAttributeTableView,
-                      QgsAttributeTableFilterModel)
-
-
+from qgis.PyQt.QtCore import (
+ QAbstractTableModel, 
+ QVariant, 
+ QStringListModel, 
+ pyqtSignal
+)
+from qgis.core import (
+ QgsVectorLayerCache, 
+ QgsFeatureRequest, 
+ QgsField, 
+ QgsProject, 
+ QgsWkbTypes
+ )
+from qgis.gui import (
+ QgsAttributeTableModel,
+ QgsAttributeTableView,
+ QgsAttributeTableFilterModel
+)
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
