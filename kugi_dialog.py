@@ -45,7 +45,6 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 UmumMasuk = pyqtSignal()
 urlKategori = "https://kugi.ina-sdi.or.id:8080/kugiapi/featurecatalog"
 
-
 response = request.urlopen(urlKategori)
 dataKategori = json.loads(response.read())
 daftarKategori = []
@@ -56,16 +55,10 @@ for kategoriList in dataKategori:
     daftarKategori.append(trimmedKategori)
 daftarKategoriSorted = sorted(daftarKategori)
 
-
 class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         super(kugiDialog, self).__init__(parent)
-        # Set up the user interface from Designer through FORM_CLASS.
-        # After self.setupUi() you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
-        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
-        # #widgets-and-dialogs-with-auto-connect 
         self.setupUi(self)
         ####BUAT TABEL DAFTAR FIELD AWAL
         #definisiin layernya yang dipilih di input combo
@@ -120,10 +113,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.cancelButton.clicked.connect(self.get_matched)
     
     def changeKategori(self):
-
-        
-
-        #buat list daftar id kategori
+    #buat list daftar id kategori
         daftarID =[]
         #parsing untuk dapat list id kategori dari api
         for dataID in dataKategori:
@@ -155,14 +145,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     unsur = listdata.get('typeName')
                     namaUnsur = unsur.strip('@en')
                     code = listdata.get('code')
-                    kode1 = code.strip('@en')
-                    
-
-
-                            
-                    
-                    
-                    
+                    kode1 = code.strip('@en')    
                     kode = str(kode1[4:6])
                     if kode== "01":
                         skala = "1:1.000.000" 
@@ -222,7 +205,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             for a in self.namaUnsurGloball :
                 if ((self.namaUnsurGloball [x])[-2:]) == 'AR' :
                     filteredDisplay.append(daftarUnsur1[x])
-                
                 else :
                     pass
                 x = x + 1   
@@ -232,7 +214,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             for a in self.namaUnsurGloball :
                 if ((self.namaUnsurGloball [x])[-2:]) == 'AR' :
                     filteredDisplay.append(daftarUnsur1[x])
-                    
                 else :
                     pass
                 x = x + 1                  
@@ -242,7 +223,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             for a in self.namaUnsurGloball :
                 if ((self.namaUnsurGloball [x])[-2:]) == 'PT' :
                     filteredDisplay.append(daftarUnsur1[x])
-                    
                 else :
                     pass
                 x = x + 1   
@@ -252,13 +232,11 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             for a in self.namaUnsurGloball  :
                 if ((self.namaUnsurGloball [x])[-2:]) == 'LN' :
                     filteredDisplay.append(daftarUnsur1[x])
-                    
                     x = x + 1
                 else :
                     pass
         else:
-            pass
-                
+            pass     
 
         self.unsurCombo.clear()  
         self.unsurCombo.setModel(QStringListModel(filteredDisplay))
@@ -379,7 +357,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         for item in combo2:
             text = item.currentText()
             listCurrentText.append(text)
-        print (listCurrentText)
+        print(listCurrentText)
 
     def layerBaru (self):
         layerAwal = self.inputCombo.currentLayer()
@@ -434,11 +412,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                 srs_value = crsLayer
                 for feat in layer.getFeatures():
                     layer.changeAttributeValue(feat.id(), field_idx, srs_value)
-                
         layer.commitChanges()        
         QgsProject.instance().addMapLayer(layer) 
-
-         
 
     def outFolder(self):
         # Show the folder dialog for output
@@ -452,3 +427,42 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
       
     def getOutFolder(self):
         return(self.saveEdit.text())
+        
+    def exportShapefile(self):
+        # Get the output folder path
+        outFolder = self.getOutFolder()
+
+        # Get the text from the QLineEdit and use it as the shapefile name
+        shapefileName = self.lineEdit.text()
+
+        # Get the current project CRS
+        crs = QgsCoordinateReferenceSystem()
+        crs.createFromId(QgsProject.instance().crs().postgisSrid())
+
+        # Create a new vector layer and add it to the project
+        if geometryType == QgsWkbTypes.PointGeometry:
+            vl = QgsVectorLayer("Point?crs=" + crs.authid(), shapefileName, "memory")
+        elif geometryType == QgsWkbTypes.LineGeometry:
+            vl = QgsVectorLayer("LineString?crs=" + crs.authid(), shapefileName, "memory")
+        elif geometryType == QgsWkbTypes.PolygonGeometry:
+            vl = QgsVectorLayer("Polygon?crs=" + crs.authid(), shapefileName, "memory")
+        elif geometryType == QgsWkbTypes.Unknown:
+            print("Invalid layer type")
+            vl = None
+        else:
+            print("Unhandled geometry type")
+            vl = None
+
+        # Add the layer to the project
+        if vl is not None:
+            QgsProject.instance().addMapLayer(vl)
+        else:
+            print("Error creating layer")
+
+        # Write the layer to a shapefile in the specified output folder
+        writer = QgsVectorFileWriter.writeAsVectorFormat(vl, outFolder + "/" + shapefileName + ".shp", "utf-8", crs, "ESRI Shapefile")
+
+        if writer[0] == QgsVectorFileWriter.NoError:
+            print("Shapefile exported successfully")
+        else:
+            print("Error exporting shapefile:", writer)
