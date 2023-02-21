@@ -54,16 +54,34 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'kugi_dialog_base.ui'))
 
 UmumMasuk = pyqtSignal()
-urlKategori = "https://kugi.ina-sdi.or.id:8080/kugiapi/featurecatalog"
+#urlKategori = "https://kugi.ina-sdi.or.id:8080/kugiapi/featurecatalog"
 
-response = request.urlopen(urlKategori)
-dataKategori = json.loads(response.read())
-daftarKategori = []
 
-for kategoriList in dataKategori:
-    namaKategori = kategoriList.get('name')
-    trimmedKategori = namaKategori.strip('@en')
-    daftarKategori.append(trimmedKategori)
+#response = request.urlopen(urlKategori)
+#dataKategori = json.loads(response.read())
+#daftarKategori = []
+
+#for kategoriList in dataKategori:
+#    namaKategori = kategoriList.get('name')
+#    trimmedKategori = namaKategori.strip('@en')
+#    daftarKategori.append(trimmedKategori)
+
+
+daftarKategori = ['PERENCANAAN',
+                  'BATAS WILAYAH',
+                  'TANAH',
+                  'HIPSOGRAFI',
+                  'VEGETASI',
+                  'DATASET KHUSUS',
+                  'GEOLOGI',
+                  'REFERENSI SPASIAL',
+                  'TOPONIMI',
+                  'KADASTER',
+                  'KEBENCANAAN',
+                  'LINGKUNGAN TERBANGUN',
+                  'UTILITAS',
+                  'HIDROGRAFI',
+                  'TRANSPORTASI']
 daftarKategoriSorted = sorted(daftarKategori)
 
 class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
@@ -71,45 +89,55 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         """Constructor."""
         super(kugiDialog, self).__init__(parent)
         self.setupUi(self)
-        ####BUAT TABEL DAFTAR FIELD AWAL
+        self.iface = iface
+        
+        #### BUAT TABEL DAFTAR FIELD AWAL
         #definisiin layernya yang dipilih di input combo
         layer = self.inputCombo.currentLayer()
-        prov = layer.dataProvider()
-        #dapatkan list field dari layer yang dipilih
-        field_names = [field.name() for field in prov.fields()]
-        self.fieldTable.clear()
-        #buat list nama dan tipe field
-        namaField = []
-        tipeData = []
-        #hitung ada berapa field 
-        jumlah_field = 0
-        #masukin nama dan tipe field ke list
-        for count, f in enumerate(field_names):
-            namaField.append(f)
-            jumlah_field +=1
-        for field in layer.fields():
-            tipe_data = field.typeName()
-            tipeData.append(tipe_data)
-        #definisiin ada tiga kolom dan buat header
-        self.fieldTable.setColumnCount(3)
-        self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
-        #atur ukuran kolom terakhir supaya tabel penuh
-        self.fieldTable.horizontalHeader().setStretchLastSection(True)
+        if layer == None :
+            print("Anda perlu menambahkan layer pada kanvas QGIS")
+            #(self.iface.messageBar().pushMessage('Anda perlu menambahkan layer pada kanvas QGIS',level=Qgis.Critical, duration=5))
+            prov = None
+            pass
+        else :
+            prov = layer.dataProvider()
+            #dapatkan list field dari layer yang dipilih
 
-        #buat baris sebanyak jumlah field
-        self.fieldTable.setRowCount(jumlah_field)
-        for index in range(jumlah_field):
-            #buat list item1 untuk nama field
-            item1 = QtWidgets.QTableWidgetItem(namaField[index])
-            #masukkan nama field secara berulang tiap baris dengan index
-            self.fieldTable.setItem(index,0,item1)
-            #buat list item2 untuk tipe field
-            item2 = QtWidgets.QTableWidgetItem(tipeData[index])
-            #masukkan tipe field secara berulang tiap baris dengan index
-            self.fieldTable.setItem(index,1,item2)
-            combo = QtWidgets.QComboBox()
-            self.fieldTable.setCellWidget(index,2,combo)
+            field_names = [field.name() for field in prov.fields()]
+            self.fieldTable.clear()
 
+            #buat list nama dan tipe field
+            namaField = []
+            tipeData = []
+            #hitung ada berapa field 
+            jumlah_field = 0
+            #masukin nama dan tipe field ke list
+
+            for count, f in enumerate(field_names):
+                namaField.append(f)
+                jumlah_field +=1
+            for field in layer.fields():
+                tipe_data = field.typeName()
+                tipeData.append(tipe_data)
+            #definisiin ada tiga kolom dan buat header
+            self.fieldTable.setColumnCount(3)
+            self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
+            #atur ukuran kolom terakhir supaya tabel penuh
+            self.fieldTable.horizontalHeader().setStretchLastSection(True)
+
+            #buat baris sebanyak jumlah field
+            self.fieldTable.setRowCount(jumlah_field)
+            for index in range(jumlah_field):
+                #buat list item1 untuk nama field
+                item1 = QtWidgets.QTableWidgetItem(namaField[index])
+                #masukkan nama field secara berulang tiap baris dengan index
+                self.fieldTable.setItem(index,0,item1)
+                #buat list item2 untuk tipe field
+                item2 = QtWidgets.QTableWidgetItem(tipeData[index])
+                #masukkan tipe field secara berulang tiap baris dengan index
+                self.fieldTable.setItem(index,1,item2)
+                combo = QtWidgets.QComboBox()
+                self.fieldTable.setCellWidget(index,2,combo)
         #atur ukuran tabel
         self.fieldTable.setColumnWidth(0,275)
         self.fieldTable.setColumnWidth(1,185)
