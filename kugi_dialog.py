@@ -28,15 +28,20 @@ from urllib import request
 from time import time, gmtime, strftime
 
 from qgis.PyQt import uic
-from qgis.PyQt import QtWidgets, QtCore
+from qgis.PyQt import QtWidgets, QtCore, QtGui
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QAbstractTableModel, QVariant, QStringListModel, pyqtSignal
-from qgis.core import QgsVectorLayerCache, QgsFeatureRequest, QgsField, QgsProject
+from qgis.core import (QgsVectorLayerCache, 
+    QgsFeatureRequest, 
+    QgsField, 
+    QgsProject,
+    QgsWkbTypes,
+    QgsVectorFileWriter,
+    QgsCoordinateReferenceSystem,
+    QgsVectorLayer)
 from qgis.gui import (QgsAttributeTableModel,
-                      QgsAttributeTableView,
-                      QgsAttributeTableFilterModel)
-
-
+    QgsAttributeTableView,
+    QgsAttributeTableFilterModel)
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -61,53 +66,49 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         super(kugiDialog, self).__init__(parent)
-        # Set up the user interface from Designer through FORM_CLASS.
-        # After self.setupUi() you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
-        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
-        # #widgets-and-dialogs-with-auto-connect 
         self.setupUi(self)
         
-        ####BUAT TABEL DAFTAR FIELD AWAL
-        #definisiin layernya yang dipilih di input combo
+        #### BUAT TABEL DAFTAR FIELD AWAL
+        # definisiin layernya yang dipilih di input combo
         layer = self.inputCombo.currentLayer()
         prov = layer.dataProvider()
-        #dapatkan list field dari layer yang dipilih
+        # dapatkan list field dari layer yang dipilih
         field_names = [field.name() for field in prov.fields()]
         self.fieldTable.clear()
-        #buat list nama dan tipe field
+
+        # buat list nama dan tipe field
         self.namaField = []
         tipeData = []
-        #hitung ada berapa field 
+        # hitung ada berapa field 
         jumlah_field = 0
-        #masukin nama dan tipe field ke list
+        # masukin nama dan tipe field ke list
         for count, f in enumerate(field_names):
             self.namaField.append(f)
             jumlah_field +=1
         for field in layer.fields():
             tipe_data = field.typeName()
             tipeData.append(tipe_data)
-        #definisiin ada tiga kolom dan buat header
+        # definisiin ada tiga kolom dan buat header
         self.fieldTable.setColumnCount(3)
         self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
-        #atur ukuran kolom terakhir supaya tabel penuh
+        # atur ukuran kolom terakhir supaya tabel penuh
         self.fieldTable.horizontalHeader().setStretchLastSection(True)
 
-        #buat baris sebanyak jumlah field
+        # buat baris sebanyak jumlah field
         self.fieldTable.setRowCount(jumlah_field)
         for index in range(jumlah_field):
-            #buat list item1 untuk nama field
+            # buat list item1 untuk nama field
             item1 = QtWidgets.QTableWidgetItem(self.namaField[index])
-            #masukkan nama field secara berulang tiap baris dengan index
+            # masukkan nama field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,0,item1)
-            #buat list item2 untuk tipe field
+            # buat list item2 untuk tipe field
             item2 = QtWidgets.QTableWidgetItem(tipeData[index])
-            #masukkan tipe field secara berulang tiap baris dengan index
+            # masukkan tipe field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,1,item2)
             combo = QtWidgets.QComboBox()
             self.fieldTable.setCellWidget(index,2,combo)
 
-        #atur ukuran tabel
+        # atur ukuran tabel
         self.fieldTable.setColumnWidth(0,275)
         self.fieldTable.setColumnWidth(1,185)
         self.kategoriCombo.addItems(daftarKategoriSorted)
@@ -121,33 +122,33 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.cancelButton.clicked.connect(self.coba_rename)
     
     def changeKategori(self):
-        #buat list daftar id kategori
+        # buat list daftar id kategori
         daftarID =[]
-        #parsing untuk dapat list id kategori dari api
+        # parsing untuk dapat list id kategori dari api
         for dataID in dataKategori:
             id = dataID.get('id')
             idKategori = id.strip('@en')
             daftarID.append(idKategori)  
-        #buat zip untuk gabung id dan nama kategori      
+        # buat zip untuk gabung id dan nama kategori      
         zippedKategori = zip(daftarID, daftarKategori)
-        #definisi nama kategori yang dipiih
+        # definisi nama kategori yang dipiih
         selectedCategory = self.kategoriCombo.currentText()
-        #ambil id kategori
+        # ambil id kategori
         for a, b in zippedKategori:
-            #buat kondisi untuk dapat id kategori dari nama kategori yang dipilih
+            # buat kondisi untuk dapat id kategori dari nama kategori yang dipilih
             if b == selectedCategory:  
                 inputID = str(a)
-                #buat url api dari id kategori yang dipakai
+                # buat url api dari id kategori yang dipakai
                 url = "https://kugi.ina-sdi.or.id:8080/kugiapi/featuretype?fcid="
                 response = request.urlopen(url+inputID)
                 data = json.loads(response.read())
                 
-                #buat daftar unsur dari api unsur (nama dan kode)
+                # buat daftar unsur dari api unsur (nama dan kode)
                 daftarUnsurUnordered= []
                 daftarKode =[]
                 listNama = []
                 for listdata in data:
-                    #parsing api unsur untuk dapat nama dan kode unsur dan masukin ke daftar kode dan daftar unsur
+                    # parsing api unsur untuk dapat nama dan kode unsur dan masukin ke daftar kode dan daftar unsur
                     unsur = listdata.get('typeName')
                     namaUnsur = unsur.strip('@en')
                     code = listdata.get('code')
@@ -181,8 +182,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     daftarKode.append(kode1)
                     daftarUnsurUnordered.append(display) 
                     listNama.append(namaUnsur)
-                    #nambah tiap hasil parsing nama unsur ke unsurCombo
-######zipUnsur itu dict kode dan nama aja, daftarUnsur itu list display lengkap
+                    # nambah tiap hasil parsing nama unsur ke unsurCombo
+###### zipUnsur itu dict kode dan nama aja, daftarUnsur itu list display lengkap
                 daftarUnsur = sorted(daftarUnsurUnordered)
                 zipUnsur = dict(zip(daftarKode, listNama))
         return(zipUnsur, daftarUnsur)
@@ -212,42 +213,42 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         return(b)
 
     def populateTable(self):
-        #definisiin layernya yang dipilih di input combo
+        # definisiin layernya yang dipilih di input combo
         layer = self.inputCombo.currentLayer()
         prov = layer.dataProvider()
-        #dapatkan list field dari layer yang dipilih
+        # dapatkan list field dari layer yang dipilih
         field_names = [field.name() for field in prov.fields()]
         self.fieldTable.clear()
-        #buat list nama dan tipe field
+        # buat list nama dan tipe field
         namaField = []
         tipeData = []
-        #hitung ada berapa field 
+        # hitung ada berapa field 
         jumlah_field = 0
-        #masukin nama dan tipe field ke list
+        # masukin nama dan tipe field ke list
         for count, f in enumerate(field_names):
             namaField.append(f)
             jumlah_field +=1
         for field in layer.fields():
             tipe_data = field.typeName()
             tipeData.append(tipe_data)
-        #definisiin ada tiga kolom dan buat header
+        # definisiin ada tiga kolom dan buat header
         self.fieldTable.setColumnCount(3)
         self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
-        #atur ukuran kolom terakhir supaya tabel penuh
+        # atur ukuran kolom terakhir supaya tabel penuh
         self.fieldTable.horizontalHeader().setStretchLastSection(True)
 
-        #buat baris sebanyak jumlah field
+        # buat baris sebanyak jumlah field
         self.fieldTable.setRowCount(jumlah_field)
         for index in range(jumlah_field):
-            #buat list item1 untuk nama field
+            # buat list item1 untuk nama field
             item1 = QtWidgets.QTableWidgetItem(namaField[index])
-            #masukkan nama field secara berulang tiap baris dengan index
+            # masukkan nama field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,0,item1)
-            #buat list item2 untuk tipe field
+            # buat list item2 untuk tipe field
             item2 = QtWidgets.QTableWidgetItem(tipeData[index])
-            #masukkan tipe field secara berulang tiap baris dengan index
+            # masukkan tipe field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,1,item2)
-        #atur ukuran tabel
+        # atur ukuran tabel
         self.fieldTable.setColumnWidth(0,275)
         self.fieldTable.setColumnWidth(1,185)
         return(jumlah_field)
@@ -263,8 +264,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
     
     def getStrukturList(self):
         dialog, label = self.progdialog()
-        zipUnsur,_ = self.changeKategori() #list kode dan nama unsur
-        inputUnsur = self.getUnsurCombo() #current text unsur untuk url parse struktur
+        zipUnsur,_ = self.changeKategori() # list kode dan nama unsur
+        inputUnsur = self.getUnsurCombo() # current text unsur untuk url parse struktur
         for a, b in zipUnsur.items():
             if b == inputUnsur:
                 inputKode = str(a)
@@ -336,6 +337,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                 layer.renameAttribute(idx, 'new_FIELD123')
                 print ("jalan")
         layer.commitChanges()
+
     def adding_attributes(self):
         #run = self.get_matched()
         attDict,_, _ = self.getStrukturList()
@@ -431,7 +433,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     layer.changeAttributeValue(feat.id(), field_idx, srs_value)
                 
         layer.commitChanges()        
-        QgsProject.instance().addMapLayer(layer)  
+        QgsProject.instance().addMapLayer(layer) 
 
     def outFolder(self):
         # Show the folder dialog for output
@@ -443,8 +445,44 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             self.saveEdit.clear()
             self.saveEdit.insert(outPath)
       
-    def getOutFolder(self):
+    def saveFile(self):
         return(self.saveEdit.text())
 
+    def exportShapefile(self):
+        # Get the output folder path
+        outFolder = self.getOutFolder()
 
-   
+        # Get the text from the QLineEdit and use it as the shapefile name
+        shapefileName = self.lineEdit.text()
+
+        # Get the current project CRS
+        crs = QgsCoordinateReferenceSystem()
+        crs.createFromId(QgsProject.instance().crs().postgisSrid())
+
+        # Create a new vector layer and add it to the project
+        if geometryType == QgsWkbTypes.PointGeometry:
+            vl = QgsVectorLayer("Point?crs=" + crs.authid(), shapefileName, "memory")
+        elif geometryType == QgsWkbTypes.LineGeometry:
+            vl = QgsVectorLayer("LineString?crs=" + crs.authid(), shapefileName, "memory")
+        elif geometryType == QgsWkbTypes.PolygonGeometry:
+            vl = QgsVectorLayer("Polygon?crs=" + crs.authid(), shapefileName, "memory")
+        elif geometryType == QgsWkbTypes.Unknown:
+            print("Invalid layer type")
+            vl = None
+        else:
+            print("Unhandled geometry type")
+            vl = None
+
+        # Add the layer to the project
+        if vl is not None:
+            QgsProject.instance().addMapLayer(vl)
+        else:
+            print("Error creating layer")
+
+        # Write the layer to a shapefile in the specified output folder
+        writer = QgsVectorFileWriter.writeAsVectorFormat(vl, outFolder + "/" + shapefileName + ".shp", "utf-8", crs, "ESRI Shapefile")
+
+        if writer[0] == QgsVectorFileWriter.NoError:
+            print("Shapefile exported successfully")
+        else:
+            print("Error exporting shapefile:", writer)
