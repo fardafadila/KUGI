@@ -302,7 +302,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         tipeData = []
         #hitung ada berapa field 
         jumlah_field = 0
-        
         #masukin nama dan tipe field ke list
         for count, f in enumerate(field_names):
             namaField.append(f)
@@ -310,7 +309,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         for field in layer.fields():
             tipe_data = field.typeName()
             tipeData.append(tipe_data)
-        
         #definisiin ada tiga kolom dan buat header
         self.fieldTable.setColumnCount(3)
         self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
@@ -328,7 +326,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             item2 = QtWidgets.QTableWidgetItem(tipeData[index])
             #masukkan tipe field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,1,item2)
-        
         #atur ukuran tabel
         self.fieldTable.setColumnWidth(0,275)
         self.fieldTable.setColumnWidth(1,185)
@@ -345,8 +342,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
     
     def getStrukturList(self):
         dialog, label = self.progdialog()
-        zipUnsur,_ = self.changeKategori() # list kode dan nama unsur
-        inputUnsur = self.getUnsurCombo() # current text unsur untuk url parse struktur
+        zipUnsur,_ = self.changeKategori() #list kode dan nama unsur
+        inputUnsur = self.getUnsurCombo() #current text unsur untuk url parse struktur
         for a, b in zipUnsur.items():
             if b == inputUnsur:
                 inputKode = str(a)
