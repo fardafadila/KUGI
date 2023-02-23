@@ -357,6 +357,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         #print ("sudah copy value")
     def adding_attributes(self):
         #run = self.get_matched()
+        #FUNGSI PASTIKAN TIPE DATA MAPPING FIELD SUDAH SAMA
+        
         attDict,_, _ = self.getStrukturList()
         layerAwal = self.inputCombo.currentLayer()
         layer = layerAwal.materialize(QgsFeatureRequest().setFilterFids(layerAwal.allFeatureIds()))
