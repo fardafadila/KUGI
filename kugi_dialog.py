@@ -11,7 +11,6 @@
         copyright            : (C) 2022 by UGM
         email                : fardafadila48@gmail.com
  ***************************************************************************/
-
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -400,14 +399,15 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         ####END FUNGSI ADD ATRIBUT
 
         #FUNGSI BUAT COPY VALUE DARI FIELD AWAL KE AKHIR
+        prov = layer.dataProvider()
+        field_names = [field.name() for field in prov.fields()]
+        fields = layer.dataProvider().fields()
         for awal, akhir in kolomBaru.items():
             print ("masuk fungsi copy value")
             #KALAU PADANANNYA BUKAN -
             if akhir != notMatched:            
                 #print ("masuk fungsi copy value")
-                prov = layer.dataProvider()
-                field_names = [field.name() for field in prov.fields()]
-                fields = layer.dataProvider().fields()
+                
                 origin_field = awal
                 target_field = akhir
                 idx = field_names.index(target_field)
@@ -418,18 +418,28 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     for feat in layer.getFeatures():
                         #print (feat[origin_field])
                         layer.changeAttributeValue(feat.id(), idx, feat[origin_field])
-                layer.deleteAttribute(idy)
+                #layer.deleteAttribute(idy)
                 layer.commitChanges()
                             
         self.listFieldKugi = []
         prov = layer.dataProvider()
-        field_names_akhir = [field.name() for field in prov.fields()]
-        #masukin nama dan tipe field ke list
-        jumlah_fieldAkhir = 0
-        for count, f in enumerate(field_names_akhir):
-            self.listFieldKugi.append(f)
-            jumlah_fieldAkhir +=1
-        #print (self.listFieldKugi)
+        field_namesUpdated = [field.name() for field in prov.fields()] 
+        jumlah_fieldUpdated = 0
+        self.namaFieldLayerUpdated= []
+        for count, f in enumerate(field_namesUpdated):
+            self.namaFieldLayerUpdated.append(f)
+            jumlah_fieldUpdated +=1
+        print (self.namaFieldLayerUpdated)
+        layer.startEditing()
+        for namaKolom in self.namaFieldLayerUpdated:
+            for harusDihapus in listDihapus:
+                if namaKolom == harusDihapus:
+                    print ("masuk hapus")
+                    idx = layer.fields().indexFromName(namaKolom)
+                    print(idx)
+                    layer.deleteAttribute(idx)
+            layer.updateFields()
+        layer.commitChanges()
         return (layer)
 
     def set_att_value (self):
