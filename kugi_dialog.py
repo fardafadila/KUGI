@@ -11,6 +11,7 @@
         copyright            : (C) 2022 by UGM
         email                : fardafadila48@gmail.com
  ***************************************************************************/
+
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,17 +24,21 @@
 
 import os
 import json
+import threading
 from urllib import request
 from time import time, gmtime, strftime
-
+from qgis.core import QgsVectorFileWriter
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.utils import iface
-from qgis.PyQt.QtCore import QAbstractTableModel, QVariant, QStringListModel, pyqtSignal
-from qgis.core import QgsVectorLayerCache, QgsFeatureRequest, QgsField, QgsProject
+from qgis.core import Qgis
+from qgis.PyQt.QtCore import QAbstractTableModel, QVariant, QStringListModel, pyqtSignal, Qt
+from qgis.core import QgsVectorLayerCache, QgsFeatureRequest, QgsField, QgsProject,QgsWkbTypes
 from qgis.gui import (QgsAttributeTableModel,
                       QgsAttributeTableView,
                       QgsAttributeTableFilterModel)
+
+from PyQt5.QtWidgets import QProgressDialog
 
 
 
@@ -41,19 +46,24 @@ from qgis.gui import (QgsAttributeTableModel,
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'kugi_dialog_base.ui'))
 
+
 UmumMasuk = pyqtSignal()
-urlKategori = "https://kugi.ina-sdi.or.id:8080/kugiapi/featurecatalog"
+#urlKategori = "https://kugi.ina-sdi.or.id:8080/kugiapi/featurecatalog"
 
 
-response = request.urlopen(urlKategori)
-dataKategori = json.loads(response.read())
-daftarKategori = []
+#response = request.urlopen(urlKategori)
+#dataKategori = json.loads(response.read())
+#daftarKategori = []
 
-for kategoriList in dataKategori:
-    namaKategori = kategoriList.get('name')
-    trimmedKategori = namaKategori.strip('@en')
-    daftarKategori.append(trimmedKategori)
+#for kategoriList in dataKategori:
+#    namaKategori = kategoriList.get('name')
+#    trimmedKategori = namaKategori.strip('@en')
+#    daftarKategori.append(trimmedKategori)
+
+
+daftarKategori = ['PERENCANAAN','BATAS WILAYAH','TANAH','HIPSOGRAFI','VEGETASI','DATASET KHUSUS','GEOLOGI','REFERENSI SPASIAL','TOPONIMI','KADASTER','KEBENCANAAN','LINGKUNGAN TERBANGUN','UTILITAS','HIDROGRAFI','TRANSPORTASI']
 daftarKategoriSorted = sorted(daftarKategori)
+    
 
 
 class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
@@ -66,47 +76,64 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect 
         self.setupUi(self)
-        
+        self.iface = iface
+
+
+
+
+        #self.thread1 = threading.Thread(target=self.progdialog)
+        #self.thread1 = threading.Thread(target=self.changeKategori)
         ####BUAT TABEL DAFTAR FIELD AWAL
         #definisiin layernya yang dipilih di input combo
         layer = self.inputCombo.currentLayer()
-        prov = layer.dataProvider()
-        #dapatkan list field dari layer yang dipilih
-        field_names = [field.name() for field in prov.fields()]
-        self.fieldTable.clear()
-        #buat list nama dan tipe field
-        self.namaField = []
-        tipeData = []
-        #hitung ada berapa field 
-        jumlah_field = 0
-        #masukin nama dan tipe field ke list
-        for count, f in enumerate(field_names):
-            self.namaField.append(f)
-            jumlah_field +=1
-        for field in layer.fields():
-            tipe_data = field.typeName()
-            tipeData.append(tipe_data)
-        #definisiin ada tiga kolom dan buat header
-        self.fieldTable.setColumnCount(3)
-        self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
-        #atur ukuran kolom terakhir supaya tabel penuh
-        self.fieldTable.horizontalHeader().setStretchLastSection(True)
 
-        #buat baris sebanyak jumlah field
-        self.fieldTable.setRowCount(jumlah_field)
-        for index in range(jumlah_field):
-            #buat list item1 untuk nama field
-            item1 = QtWidgets.QTableWidgetItem(self.namaField[index])
-            #masukkan nama field secara berulang tiap baris dengan index
-            self.fieldTable.setItem(index,0,item1)
-            #buat list item2 untuk tipe field
-            item2 = QtWidgets.QTableWidgetItem(tipeData[index])
-            #masukkan tipe field secara berulang tiap baris dengan index
-            self.fieldTable.setItem(index,1,item2)
-            combo = QtWidgets.QComboBox()
-            self.fieldTable.setCellWidget(index,2,combo)
+        if layer == None :
+            print("Anda perlu menambahkan layer pada kanvas QGIS")
+            #(self.iface.messageBar().pushMessage('Anda perlu menambahkan layer pada kanvas QGIS',level=Qgis.Critical, duration=5))
+            prov = None
+            pass
+        else :
+            prov = layer.dataProvider()
+            #dapatkan list field dari layer yang dipilih
+
+            field_names = [field.name() for field in prov.fields()]
+            self.fieldTable.clear()
+
+            #buat list nama dan tipe field
+            namaField = []
+            tipeData = []
+            #hitung ada berapa field 
+            jumlah_field = 0
+            #masukin nama dan tipe field ke list
+
+            for count, f in enumerate(field_names):
+                namaField.append(f)
+                jumlah_field +=1
+            for field in layer.fields():
+                tipe_data = field.typeName()
+                tipeData.append(tipe_data)
+            #definisiin ada tiga kolom dan buat header
+            self.fieldTable.setColumnCount(3)
+            self.fieldTable.setHorizontalHeaderLabels(['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru'])
+            #atur ukuran kolom terakhir supaya tabel penuh
+            self.fieldTable.horizontalHeader().setStretchLastSection(True)
+
+            #buat baris sebanyak jumlah field
+            self.fieldTable.setRowCount(jumlah_field)
+            for index in range(jumlah_field):
+                #buat list item1 untuk nama field
+                item1 = QtWidgets.QTableWidgetItem(namaField[index])
+                #masukkan nama field secara berulang tiap baris dengan index
+                self.fieldTable.setItem(index,0,item1)
+                #buat list item2 untuk tipe field
+                item2 = QtWidgets.QTableWidgetItem(tipeData[index])
+                #masukkan tipe field secara berulang tiap baris dengan index
+                self.fieldTable.setItem(index,1,item2)
+                combo = QtWidgets.QComboBox()
+                self.fieldTable.setCellWidget(index,2,combo)
 
         #atur ukuran tabel
+        self.namaField = []
         self.fieldTable.setColumnWidth(0,275)
         self.fieldTable.setColumnWidth(1,185)
         self.kategoriCombo.addItems(daftarKategoriSorted)
@@ -114,78 +141,104 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.outputButton.clicked.connect(self.outFolder)
         self.inputCombo.currentTextChanged.connect(self.populateTable)
         self.inputCombo.currentTextChanged.connect(self.makeCombo)
+        #self.inputCombo.currentTextChanged.connect(self.progdialog)
+        self.inputCombo.currentTextChanged.connect(self.gantiLayer)
+        #self.inputCombo.currentTextChanged.connect(self.addCategoryList)
         self.unsurCombo.currentTextChanged.connect(self.getUnsurCombo)
         self.unsurCombo.currentTextChanged.connect(self.populateCombo)
+        #self.unsurCombo.currentTextChanged.connect(self.progdialog)
         self.runButton.clicked.connect(self.set_att_value)
-        self.cancelButton.clicked.connect(self.coba_rename)
+        self.cancelButton.clicked.connect(self.get_matched)
     
+
+
     def changeKategori(self):
-        #buat list daftar id kategori
-        daftarID =[]
-        #parsing untuk dapat list id kategori dari api
-        for dataID in dataKategori:
-            id = dataID.get('id')
-            idKategori = id.strip('@en')
-            daftarID.append(idKategori)  
-        #buat zip untuk gabung id dan nama kategori      
-        zippedKategori = zip(daftarID, daftarKategori)
-        #definisi nama kategori yang dipiih
-        selectedCategory = self.kategoriCombo.currentText()
-        #ambil id kategori
-        for a, b in zippedKategori:
-            #buat kondisi untuk dapat id kategori dari nama kategori yang dipilih
-            if b == selectedCategory:  
-                inputID = str(a)
-                #buat url api dari id kategori yang dipakai
-                url = "https://kugi.ina-sdi.or.id:8080/kugiapi/featuretype?fcid="
-                response = request.urlopen(url+inputID)
-                data = json.loads(response.read())
+        try:
+            dialog, label = self.progdialog()  
+            #self.progdialog()  
+            urlKategori = "https://kugi.ina-sdi.or.id:8080/kugiapi/featurecatalog"
+            response = request.urlopen(urlKategori)
+            dataKategori = json.loads(response.read())  
+            #buat list daftar id kategori
+            daftarID =[]
+            #parsing untuk dapat list id kategori dari api
+            for dataID in dataKategori:
+                id = dataID.get('id')
+                idKategori = id.strip('@en')
+                daftarID.append(idKategori)  
+            #buat zip untuk gabung id dan nama kategori      
+            zippedKategori = zip(daftarID, daftarKategori)
+            #definisi nama kategori yang dipiih
+            selectedCategory = self.kategoriCombo.currentText()
+            #ambil id kategori
+            for a, b in zippedKategori:
+                #buat kondisi untuk dapat id kategori dari nama kategori yang dipilih
+                if b == selectedCategory:  
+                    inputID = str(a)
+                    #buat url api dari id kategori yang dipakai
+                    url = "https://kugi.ina-sdi.or.id:8080/kugiapi/featuretype?fcid="
+                    response = request.urlopen(url+inputID)
+                    data = json.loads(response.read())
                 
-                #buat daftar unsur dari api unsur (nama dan kode)
-                daftarUnsurUnordered= []
-                daftarKode =[]
-                listNama = []
-                for listdata in data:
-                    #parsing api unsur untuk dapat nama dan kode unsur dan masukin ke daftar kode dan daftar unsur
-                    unsur = listdata.get('typeName')
-                    namaUnsur = unsur.strip('@en')
-                    code = listdata.get('code')
-                    kode1 = code.strip('@en')
-                    kode = str(kode1[4:6])
-                    if kode== "01":
-                        skala = "1:1.000.000" 
-                    elif kode== "02":
-                        skala  = "1:500.000" 
-                    elif kode == "03":
-                        skala  = "1:250.000"
-                    elif kode == "04":
-                        skala  = "1:100.000"
-                    elif kode == "05":
-                        skala  = "1:50.000"
-                    elif kode == "06":
-                        skala  = "1:25.000"
-                    elif kode == "07":
-                        skala  = "1:10.000"
-                    elif kode == "08":
-                        skala  = "1:5.000"
-                    elif kode == "09":
-                        skala  = "1:2.500"
-                    elif kode == "10":
-                        skala  = "1:1.000"
-                    else:
-                        skala="error"
-                    definisi1 = listdata.get('definition')
-                    definisi = definisi1.strip('@en')
-                    display = namaUnsur  + " | " + kode1+ " \nSkala: " + skala + '\n' + definisi
-                    daftarKode.append(kode1)
-                    daftarUnsurUnordered.append(display) 
-                    listNama.append(namaUnsur)
-                    #nambah tiap hasil parsing nama unsur ke unsurCombo
-######zipUnsur itu dict kode dan nama aja, daftarUnsur itu list display lengkap
-                daftarUnsur = sorted(daftarUnsurUnordered)
-                zipUnsur = dict(zip(daftarKode, listNama))
-        return(zipUnsur, daftarUnsur)
+                    #buat daftar unsur dari api unsur (nama dan kode)
+                    daftarUnsurUnordered= []
+                    daftarKode =[]
+                    listNama = []
+                    self.namaUnsurGlobal = []
+                
+                    for listdata in data:
+                        #parsing api unsur untuk dapat nama dan kode unsur dan masukin ke daftar kode dan daftar unsur
+                        unsur = listdata.get('typeName')
+                        namaUnsur = unsur.strip('@en')
+                        code = listdata.get('code')
+                        kode1 = code.strip('@en')
+
+                        kode = str(kode1[4:6])
+                        if kode== "01":
+                            skala = "1:1.000.000" 
+                        elif kode== "02":
+                            skala  = "1:500.000" 
+                        elif kode == "03":
+                            skala  = "1:250.000"
+                        elif kode == "04":
+                            skala  = "1:100.000"
+                        elif kode == "05":
+                            skala  = "1:50.000"
+                        elif kode == "06":
+                            skala  = "1:25.000"
+                        elif kode == "07":
+                            skala  = "1:10.000"
+                        elif kode == "08":
+                            skala  = "1:5.000"
+                        elif kode == "09":
+                            skala  = "1:2.500"
+                        elif kode == "10":
+                            skala  = "1:1.000"
+                        else:
+                            skala="error"
+                        definisi1 = listdata.get('definition')
+                        definisi = definisi1.strip('@en')
+                        display = namaUnsur  + " | " + kode1 + " \nSkala: " + skala + '\n' + definisi
+                        daftarKode.append(kode1)
+                        daftarUnsurUnordered.append(display) 
+                        listNama.append(namaUnsur)
+                        self.namaUnsurGlobal.append(namaUnsur)
+                        #nambah tiap hasil parsing nama unsur ke unsurCombo
+                        ######zipUnsur itu dict kode dan nama aja, daftarUnsur itu list display lengkap
+                    daftarUnsur = sorted(daftarUnsurUnordered)
+                    zipUnsur = dict(zip(daftarKode, listNama))
+            return(zipUnsur, daftarUnsur)
+        
+        except :
+            self.iface.messageBar().pushMessage('Periksa koneksi internet Anda',level=Qgis.Critical, duration=5)
+            
+            self.namaUnsurGlobal = None
+            zipUnsur = None
+            daftarUnsur = None
+            return(zipUnsur, daftarUnsur)
     
+
+
     def progdialog(self):
         dialog = QtWidgets.QProgressDialog()
         dialog.setWindowTitle("KUGI")
@@ -194,16 +247,139 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         dialog.setMinimumWidth(300)        
         dialog.show()
         return dialog, label
-    def populateUnsur(self, progdialog):
-        dialog, label = self.progdialog()       
+
+    def populateUnsur(self): #(self, progdialog):
+
+        #self.progdialog()  
+        dialog, label = self.progdialog()    
         _, daftarUnsur = self.changeKategori()
+        self.namaUnsurGlobal
+        if self.namaUnsurGlobal == None :
+            self.namaUnsurGloball = []
+        else:
+            self.namaUnsurGloball = sorted(self.namaUnsurGlobal) 
+        filteredDisplay = []
+
+        if daftarUnsur == None :
+            daftarUnsur1 = []
+        else:
+            daftarUnsur1 =sorted(daftarUnsur)
+
+        self.daftarUnsur = daftarUnsur1 
+
+        filteredDisplay = []
+
+        layer = self.inputCombo.currentLayer()
+
+        if layer == None :
+            filteredDisplay = []
+        else :
+
+
+            if layer.geometryType() == 2 :
+                x = 0
+                for a in self.namaUnsurGloball :
+                    if ((self.namaUnsurGloball [x])[-2:]) == 'AR' :
+                        filteredDisplay.append(daftarUnsur1[x])
+                
+                    else :
+                        pass
+                    x = x + 1   
+            if layer.geometryType() == 0 :
+                x = 0
+                for a in self.namaUnsurGloball :
+                    if ((self.namaUnsurGloball [x])[-2:]) == 'PT' :
+                        filteredDisplay.append(daftarUnsur1[x])
+                
+                    else :
+                        pass
+                    x = x + 1   
+
+            if layer.geometryType() == 1 :
+                x = 0
+                for a in self.namaUnsurGloball :
+                    if ((self.namaUnsurGloball [x])[-2:]) == 'LN' :
+                        filteredDisplay.append(daftarUnsur1[x])
+                
+                    else :
+                        pass
+                    x = x + 1   
+            else:
+                print("error")
         self.unsurCombo.clear()  
-        self.unsurCombo.setModel(QStringListModel(daftarUnsur))
+        self.unsurCombo.setModel(QStringListModel(filteredDisplay))
         self.listView = QtWidgets.QListView()
         self.listView.setWordWrap(True)
         self.unsurCombo.setView(self.listView)
         self.unsurCombo.show()
         #progress = 100
+
+
+    def gantiLayer (self):
+        _, daftarUnsur = self.changeKategori()
+        self.namaUnsurGlobal
+        dialog, label = self.progdialog()  
+        if self.namaUnsurGlobal == None :
+            self.namaUnsurGloball = []
+        else:
+            self.namaUnsurGloball = sorted(self.namaUnsurGlobal) 
+        filteredDisplay = []
+
+        if daftarUnsur == None :
+            daftarUnsur1 = []
+        else:
+            daftarUnsur1 =sorted(daftarUnsur)
+
+        self.daftarUnsur = daftarUnsur1 
+
+        filteredDisplay = []
+
+        layer = self.inputCombo.currentLayer()
+
+        if layer == None :
+            filteredDisplay = []
+        else :
+
+
+            if layer.geometryType() == 2 :
+                x = 0
+                for a in self.namaUnsurGloball :
+                    if ((self.namaUnsurGloball [x])[-2:]) == 'AR' :
+                        filteredDisplay.append(daftarUnsur1[x])
+                
+                    else :
+                        pass
+                    x = x + 1   
+            if layer.geometryType() == 0 :
+                x = 0
+                for a in self.namaUnsurGloball :
+                    if ((self.namaUnsurGloball [x])[-2:]) == 'PT' :
+                        filteredDisplay.append(daftarUnsur1[x])
+                
+                    else :
+                        pass
+                    x = x + 1   
+
+            if layer.geometryType() == 1 :
+                x = 0
+                for a in self.namaUnsurGloball :
+                    if ((self.namaUnsurGloball [x])[-2:]) == 'LN' :
+                        filteredDisplay.append(daftarUnsur1[x])
+                
+                    else :
+                        pass
+                    x = x + 1   
+            else:
+                print("error")
+        self.unsurCombo.clear()  
+        self.unsurCombo.setModel(QStringListModel(filteredDisplay))
+        self.listView = QtWidgets.QListView()
+        self.listView.setWordWrap(True)
+        self.unsurCombo.setView(self.listView)
+        self.unsurCombo.show()
+        #progress = 100
+
+
 
     def getUnsurCombo(self):
         a = self.unsurCombo.currentText()
@@ -211,6 +387,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         return(b)
 
     def populateTable(self):
+        dialog, label = self.progdialog()  
         #definisiin layernya yang dipilih di input combo
         layer = self.inputCombo.currentLayer()
         prov = layer.dataProvider()
@@ -253,7 +430,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         
     def makeCombo(self):
         jumlah_field = self.populateTable()
-        self.listCombo= []
+        self.listCombo = []
         for index in range(jumlah_field):
             combo = QtWidgets.QComboBox()
             self.listCombo.append(combo)
@@ -261,54 +438,69 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         return(self.listCombo)    
     
     def getStrukturList(self):
-        dialog, label = self.progdialog()
-        zipUnsur,_ = self.changeKategori() #list kode dan nama unsur
-        inputUnsur = self.getUnsurCombo() #current text unsur untuk url parse struktur
-        for a, b in zipUnsur.items():
-            if b == inputUnsur:
-                inputKode = str(a)
-                urlStruktur = 'https://kugi.ina-sdi.or.id:8080/kugiapi/featuretypegetbycode?code='
-                responseStruktur = request.urlopen(urlStruktur+inputKode)
-                data = json.loads(responseStruktur.read())
-                displayDaftarStrukturRedundan =['-']
-                daftarStruktur =[]
-                tipeDataStruktur = []
-                for listStruktur in data:
-                    struktur = listStruktur.get('ptMemberName')
-                    definisi = listStruktur.get('ptDefinition')
-                    tipeData = listStruktur.get('faValueType')
-                    fcode = listStruktur.get('code')
-                    displayStruktur = struktur + ' | '  +definisi + ' (Tipe data: ' + tipeData + ')'
-                    daftarStruktur.append(struktur)
-                    tipeDataStruktur.append(tipeData)
-                    displayDaftarStrukturRedundan.append(displayStruktur)                
-                displayDaftarStrukturUnordered = [*set(displayDaftarStrukturRedundan)]
-                displayDaftarStruktur = sorted(displayDaftarStrukturUnordered)
-                dictStrukturTipe = dict(zip(daftarStruktur, tipeDataStruktur))
-        return(dictStrukturTipe, inputKode, displayDaftarStruktur)
+        try:
+            #dialog, label = self.progdialog()
+            zipUnsur,_ = self.changeKategori() #list kode dan nama unsur
+            inputUnsur = self.getUnsurCombo() #current text unsur untuk url parse struktur
+
+            self.inputKode = str()
+            for a, b in zipUnsur.items():
+                if b == inputUnsur:
+                    self.inputKode = str(a)
+                    urlStruktur = 'https://kugi.ina-sdi.or.id:8080/kugiapi/featuretypegetbycode?code='
+                    responseStruktur = request.urlopen(urlStruktur+self.inputKode)
+                    data = json.loads(responseStruktur.read())
+                    displayDaftarStrukturRedundan =['-']
+                    daftarStruktur =[]
+                    tipeDataStruktur = []
+                    for listStruktur in data:
+                        struktur = listStruktur.get('ptMemberName')
+                        definisi = listStruktur.get('ptDefinition')
+                        tipeData = listStruktur.get('faValueType')
+                        fcode = listStruktur.get('code')
+                        displayStruktur = struktur + ' | '  +definisi + ' (Tipe data: ' + tipeData + ')'
+                        daftarStruktur.append(struktur)
+                        tipeDataStruktur.append(tipeData)
+                        displayDaftarStrukturRedundan.append(displayStruktur)                
+                    displayDaftarStrukturUnordered = [*set(displayDaftarStrukturRedundan)]
+
+                    self.displayDaftarStruktur = []
+                    self.displayDaftarStruktur = sorted(displayDaftarStrukturUnordered)
+                    self.dictStrukturTipe = dict()
+                    self.dictStrukturTipe = dict(zip(daftarStruktur, tipeDataStruktur))
+            return (self.dictStrukturTipe, self.inputKode, self.displayDaftarStruktur)
+        except:
+            self.iface.messageBar().pushMessage('Periksa koneksi internet Anda',level=Qgis.Critical, duration=5)
     
     def populateCombo(self):
         dialog, label = self.progdialog()
         _, _, displayDaftarStruktur = self.getStrukturList()
         jumlah_field = self.populateTable()
+        self.listCombo = self.makeCombo
+        listComboCoba =[]
         for index in range(jumlah_field):
             combo = self.makeCombo()
             cek = self.unsurCombo.currentText()
+            
             if cek == "" :
                 skip = []
                 for t in skip:
-                    for listCombo in combo:
-                        listCombo.addItem(t)
+                    for self.listCombo in combo:
+                        self.listCombo.addItem(t)
             else :
+
                 for t in displayDaftarStruktur:
-                    listComboCoba =[]
-                    for listCombo in combo:
-                        listCombo.addItem(t)
-                        listComboCoba.append(listCombo)                    
-            self.fieldTable.setCellWidget(index,2,listCombo)
+                    
+                    for self.listCombo in combo:
+                        self.listCombo.addItem(t)
+                        listComboCoba.append(self.listCombo)                    
+
+                    
+
+                    self.fieldTable.setCellWidget(index,2,self.listCombo)
+                        
         return(listComboCoba)
 
-    
     def get_matched (self):
         #combo2 = self.populateCombo()
         self.matchedList= []
@@ -316,8 +508,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         #INI LIST TIPE DATA YANG MATCH
         self.tipedataMatched = []
 
-        for item in listCombo2:
-            textFull = item.currentText()
+        for item in range (listCombo2.count()):
+            textFull = listCombo2.itemText(item)
             text = textFull.split(" ")[0]
             self.matchedList.append(text)
             tipe2 = textFull.split(" ")[-1]
@@ -343,18 +535,11 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         #print (self.zipTipeMatched)
         return (self.zipField)
 
-    def coba_rename(self):
-        layer = self.inputCombo.currentLayer()
-        prov = layer.dataProvider()
-        field_names = [field.name() for field in prov.fields()]
-        fields = layer.dataProvider().fields()
-        #print (fields)
-        target_field = "new"
-        idx = field_names.index(target_field)
-        layer.startEditing()
-        layer.deleteAttribute(idx)
-        layer.commitChanges()
-        #print ("sudah copy value")
+    def layerBaru (self):
+        layerAwal = self.inputCombo.currentLayer()
+        layer = layerAwal.materialize(QgsFeatureRequest().setFilterFids(layerAwal.allFeatureIds()))
+        return(layer)
+        
     def adding_attributes(self):
         #run = self.get_matched()
         #FUNGSI PASTIKAN TIPE DATA MAPPING FIELD SUDAH SAMA
@@ -471,7 +656,18 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     layer.changeAttributeValue(feat.id(), field_idx, srs_value)
                 
         layer.commitChanges()        
-        QgsProject.instance().addMapLayer(layer)  
+        QgsProject.instance().addMapLayer(layer) 
+        #QgsVectorFileWriter.writeAsVectorFormat(layer,self.saveEdit.text(),'utf-8',layer.crs(),'ESRI Shapefile') 
+        #QgsProject.instance().addMapLayer(layer) 
+
+
+
+
+        #error = QgsVectorFileWriter.writeAsVectorFormat(layer, self.saveEdit.text()  + 'nama_file_baru.shp', "utf-8", driverName="ESRI Shapefile")
+        #if error == QgsVectorFileWriter.NoError:
+        #    print("Layer saved successfully.")
+        #else:
+        #    print("Error:", error)
 
     def outFolder(self):
         # Show the folder dialog for output
@@ -485,3 +681,49 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
       
     def getOutFolder(self):
         return(self.saveEdit.text())
+
+
+
+"""from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtWidgets import QAction, QProgressDialog
+
+class ProgressDialogPlugin:
+    def __init__(self, iface):
+        self.iface = iface
+
+    def initGui(self):
+        self.action = QAction("Show Progress Dialog", self.iface.mainWindow())
+        self.action.triggered.connect(self.show_progress_dialog)
+        self.iface.addToolBarIcon(self.action)
+
+    def unload(self):
+        self.iface.removeToolBarIcon(self.action)
+
+    def show_progress_dialog(self):
+        progress_dialog = QProgressDialog("Message", "Cancel", 0, 100, self.iface.mainWindow())
+        progress_dialog.setWindowModality(Qt.WindowModal)
+        progress_dialog.setWindowTitle("Title")
+
+        thread = MyThread()
+        thread.started.connect(progress_dialog.show)
+        thread.progress.connect(progress_dialog.setValue)
+        thread.finished.connect(progress_dialog.close)
+
+        thread.start()
+
+class MyThread(QThread):
+    progress = pyqtSignal(int)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        for i in range(101):
+            self.progress.emit(i)
+            self.msleep(50) # Simulate a time-consuming task
+
+def classFactory(iface):
+    return ProgressDialogPlugin(iface)"""
+
+
+
