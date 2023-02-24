@@ -540,10 +540,11 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     layer.deleteAttribute(idx)
             layer.updateFields()
         layer.commitChanges()
-        return (layer)
+        return (layer, self.namaFieldLayerUpdated)
 
     def set_att_value (self):
-        self.layerHasil = self.adding_attributes()
+        self.layerHasil, _ = self.adding_attributes()
+        _, mauDiisi = self.adding_attributes()
         attDict,_, _ = self.getStrukturList()
         _, inputKode, _ = self.getStrukturList()
         fcode = str(inputKode)
@@ -554,7 +555,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         field_names = [field.name() for field in prov.fields()]
         for count, f in enumerate(field_names):
             self.namaField.append(f)
-        for x in self.listFieldKugi:
+        for x in mauDiisi:
             if  x== "FCODE":
                 self.layerHasil.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
                 field_idx = self.layerHasil.fields().indexOf('FCODE')
