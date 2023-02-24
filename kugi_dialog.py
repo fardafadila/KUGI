@@ -133,7 +133,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.kategoriCombo.addItems(daftarKategoriSorted)
         self.kategoriCombo.currentTextChanged.connect(self.populateUnsur)
         #self.outputButton.clicked.connect(self.exportShapefile)
-        #self.outputButton.clicked.connect(self.outFolder)
+        self.outputButton.clicked.connect(self.outFolder)
         self.inputCombo.currentTextChanged.connect(self.populateTable)
         self.inputCombo.currentTextChanged.connect(self.makeCombo)
         self.unsurCombo.currentTextChanged.connect(self.getUnsurCombo)
@@ -569,17 +569,23 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                     self.layerHasil.changeAttributeValue(feat.id(), field_idx, srs_value)
                 
         self.layerHasil.commitChanges()        
-        QgsProject.instance().addMapLayer(self.layerHasil)  
+        shapefileName = self.getOutFolder()
+        if shapefileName == "":
+            QgsProject.instance().addMapLayer(self.layerHasil) 
+        else:
+            crs = QgsCoordinateReferenceSystem()
+            crs.createFromId(QgsProject.instance().crs().postgisSrid())
+            writer = QgsVectorFileWriter.writeAsVectorFormat(self.layerHasil, shapefileName, "utf-8", crs, "ESRI Shapefile")
+            fileInfo = QFileInfo(shapefileName)
+            baseName = fileInfo.baseName()
+            self.layer = QgsVectorLayer(shapefileName, baseName, "ogr")
+            QgsProject.instance().addMapLayer(self.layer) 
 
     def outFolder(self):
-        # Show the folder dialog for output
-        self.saveEdit.clear()
-        fileDialog = QtWidgets.QFileDialog()
-        outFolderName = fileDialog.getExistingDirectory(self, "Open a folder", ".", QtWidgets.QFileDialog.ShowDirsOnly)
-        outPath = QtCore.QFileInfo(outFolderName).absoluteFilePath()
-        if outFolderName:
-            self.saveEdit.clear()
-            self.saveEdit.insert(outPath)
+        outFolder = QgsProject.instance().homePath()
+        # Get the text from the QLineEdit and use it as the shapefile name
+        shapefileName, _ = QFileDialog.getSaveFileName(self, "Save Shapefile", outFolder, "ESRI Shapefile (*.shp)")
+        self.saveEdit.insert(shapefileName)
       
     def getOutFolder(self):
         return(self.saveEdit.text())
@@ -588,6 +594,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
     """def exportShapefile(self): 
         # Get the output folder path from the user
         outFolder = QgsProject.instance().homePath()
+        layerDisave = self.layerHasil
 
         # Get the text from the QLineEdit and use it as the shapefile name
         shapefileName, _ = QFileDialog.getSaveFileName(self, "Save Shapefile", outFolder, "ESRI Shapefile (*.shp)")
@@ -597,14 +604,14 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             return
 
         # Get the geometry type from the selected layer
-        geometryType = self.layer.geometryType()
+        geometryType = self.layerHasil.geometryType()
 
         # Get the current project CRS
         crs = QgsCoordinateReferenceSystem()
         crs.createFromId(QgsProject.instance().crs().postgisSrid())
 
         # Write the layer to a shapefile in the specified output folder
-        writer = QgsVectorFileWriter.writeAsVectorFormat(self.layer, shapefileName, "utf-8", crs, "ESRI Shapefile")
+        writer = QgsVectorFileWriter.writeAsVectorFormat(layerDisave, shapefileName, "utf-8", crs, "ESRI Shapefile")
 
         if writer[0] == QgsVectorFileWriter.NoError:
             print("Shapefile exported successfully")
@@ -612,6 +619,6 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             fileInfo = QFileInfo(shapefileName)
             baseName = fileInfo.baseName()
             self.layer = QgsVectorLayer(shapefileName, baseName, "ogr")
-            QgsProject.instance().addMapLayer(self.layer)
+            QgsProject.instance().addMapLayer(layerDisave)
         else:
             print("Error exporting shapefile:", writer)"""
