@@ -436,11 +436,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def exportShapefile(self): 
         # Get the output folder path from the user
-        outFolder = QFileDialog.getExistingDirectory(self, "Select Directory to Save Shapefile")
-
-        if not outFolder:
-            # User clicked cancel or didn't select a directory
-            return
+        outFolder = QgsProject.instance().homePath()
 
         # Get the text from the QLineEdit and use it as the shapefile name
         shapefileName, _ = QFileDialog.getSaveFileName(self, "Save Shapefile", outFolder, "ESRI Shapefile (*.shp)")
