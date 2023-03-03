@@ -488,7 +488,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             elif y == "String":
                 layer.dataProvider().addAttributes([QgsField(x, QVariant.String)])
             elif y == "OID":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Double)])
+                layer.dataProvider().addAttributes([QgsField(x, QVariant.Inte64)])
             elif y == "Date":
                 layer.dataProvider().addAttributes([QgsField(x, QVariant.Date)])
             elif y == "Geometry":
