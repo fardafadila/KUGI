@@ -25,6 +25,12 @@ import os
 import json
 from urllib import request
 from time import time, gmtime, strftime
+import ssl
+
+try:
+    context = ssl.create_default_context()
+except ssl.SSLError:
+    context = ssl._create_unverified_context()
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets, QtCore
@@ -139,7 +145,21 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.unsurCombo.currentTextChanged.connect(self.getUnsurCombo)
         self.unsurCombo.currentTextChanged.connect(self.populateCombo)
         self.runButton.clicked.connect(self.set_att_value)
-        self.cancelButton.clicked.connect(self.coba_rename)
+        self.cancelButton.clicked.connect(self.cancel_process)
+        try:
+            self.helpButton.clicked.connect(self.open_web)
+        except Exception as e:
+            print(f"Error connecting help button: {e}")
+
+    def cancel_process(self):
+        self.close()
+
+    def open_web(self):
+        url = QUrl("https://kugi.ina-sdi.or.id/")
+        try:
+            QDesktopServices.openUrl(url)
+        except Exception as e:
+            print(f"Error opening URL: {e}")
     
     def changeKategori(self):
         try:
@@ -446,7 +466,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         layer.startEditing()
         layer.deleteAttribute(idx)
         layer.commitChanges()
-        #print ("sudah copy value")
+        print ("masuk fungsi coba_rename")
+
     def adding_attributes(self):
         #run = self.get_matched()
         #FUNGSI PASTIKAN TIPE DATA MAPPING FIELD SUDAH SAMA
@@ -488,7 +509,12 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             elif y == "String":
                 layer.dataProvider().addAttributes([QgsField(x, QVariant.String)])
             elif y == "OID":
-                layer.dataProvider().addAttributes([QgsField(x, QVariant.Inte64)])
+                layer.dataProvider().addAttributes([QgsField(x, QVariant.Int)])
+                """
+                oid_idx = layer.fields().indexFromName("OBJECTID")
+                for feat in layer.getFeatures():
+                    layer.changeAttributeValue(feat.id(), oid_idx, feat.id())
+                """
             elif y == "Date":
                 layer.dataProvider().addAttributes([QgsField(x, QVariant.Date)])
             elif y == "Geometry":
@@ -510,8 +536,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                 
                 origin_field = awal
                 target_field = akhir
-                idx = field_names.index(target_field)
-                idy = field_names.index(origin_field)
+                idx = layer.fields().indexFromName(target_field)
+                idy = layer.fields().indexFromName(origin_field)
                 #print (fields)
                 for field in fields:
                     layer.startEditing()
@@ -522,6 +548,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
                 layer.commitChanges()
                             
         self.listFieldKugi = []
+        
         prov = layer.dataProvider()
         field_namesUpdated = [field.name() for field in prov.fields()] 
         jumlah_fieldUpdated = 0
