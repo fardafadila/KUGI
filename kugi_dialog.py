@@ -125,6 +125,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             #masukkan tipe field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,1,item2)
             combo = QtWidgets.QComboBox()
+            #populate the combo box with the field names
+            combo.addItems(field_names)
             self.fieldTable.setCellWidget(index,2,combo)
 
         #atur ukuran tabel
@@ -140,6 +142,8 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         self.unsurCombo.currentTextChanged.connect(self.populateCombo)
         self.runButton.clicked.connect(self.set_att_value)
         self.cancelButton.clicked.connect(self.coba_rename)
+        self.comboBox = QtWidgets.QComboBox()
+
     
     def changeKategori(self):
         try:
@@ -303,6 +307,48 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         return(b)
 
     def populateTable(self):
+        # Clear the table
+        self.fieldTable.clearContents()
+
+        # Get the current layer
+        layer = self.inputCombo.currentLayer()
+
+        # Get the list of field names and types
+        field_names = [field.name() for field in layer.fields()]
+        field_types = [field.typeName() for field in layer.fields()]
+
+        # Set the number of rows and columns in the table
+        num_rows = len(field_names)
+        self.fieldTable.setRowCount(num_rows)
+        self.fieldTable.setColumnCount(3)
+
+        # Set the header labels
+        header_labels = ['Nama Kolom', 'Tipe Data', 'Nama Kolom Baru']
+        self.fieldTable.setHorizontalHeaderLabels(header_labels)
+
+        # Create a combo box for each row and add it to the table
+        for i in range(num_rows):
+            # Add the field name to the first column
+            field_name_item = QtWidgets.QTableWidgetItem(field_names[i])
+            self.fieldTable.setItem(i, 0, field_name_item)
+
+            # Add the field type to the second column
+            field_type_item = QtWidgets.QTableWidgetItem(field_types[i])
+            self.fieldTable.setItem(i, 1, field_type_item)
+
+            # Create a combo box for the third column
+            combo_box_item = QtWidgets.QComboBox()
+            self.fieldTable.setCellWidget(i, 2, combo_box_item)
+
+            # Connect the currentIndexChanged signal of each combo box to the update_table_color function
+            combo_box_item.currentIndexChanged.connect(lambda index, row=i: self.update_table_color(row, index))
+
+        # Resize the columns to fit the contents
+        self.fieldTable.resizeColumnsToContents()
+
+        return jumlah_field
+
+        """
         #definisiin layernya yang dipilih di input combo
         layer = self.inputCombo.currentLayer()
         prov = layer.dataProvider()
@@ -338,19 +384,37 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
             item2 = QtWidgets.QTableWidgetItem(tipeData[index])
             #masukkan tipe field secara berulang tiap baris dengan index
             self.fieldTable.setItem(index,1,item2)
+
+            # Create a combo box item for each row and add it to the table
+            combo_box_item = QtWidgets.QComboBox()
+            combo_box_item.addItems([self.ui.comboBox.itemText(i) for i in range(self.ui.comboBox.count())])
+            self.fieldTable.setCellWidget(index, 2, combo_box_item)
+
+            # Connect the currentIndexChanged signal of each combo box to the update_table_color function
+            combo_box_item.currentIndexChanged.connect(lambda index, row=index: self.update_table_color(row, index))
+            
         #atur ukuran tabel
         self.fieldTable.setColumnWidth(0,275)
         self.fieldTable.setColumnWidth(1,185)
         return(jumlah_field)
-        
+        """
+    
+    # Fungsi menghijaukan 
+    def update_table_color(row, index):
+        color = QColor("#00FF00")  # set the color to green, change this to any other color as desired
+        selected_items = []
+        for row in range(self.fieldTable.rowCount()):
+            combo_box_item = self.fieldTable.cellWidget(row, 2)
+            current_text
+
     def makeCombo(self):
+        self.comboBox = None  # initialize comboBox attribute to None
         jumlah_field = self.populateTable()
-        self.listCombo= []
-        for index in range(jumlah_field):
-            combo = QtWidgets.QComboBox()
-            self.listCombo.append(combo)
-            self.fieldTable.setCellWidget(index,2,combo)
-        return(self.listCombo)    
+        if jumlah_field:
+            self.comboBox = QtWidgets.QComboBox()  # create new comboBox
+            self.fieldTable.setCellWidget(jumlah_field-1, 2, self.comboBox)
+            self.populateCombo(self.comboBox.currentText())
+        return self.comboBox
     
     def getStrukturList(self):
         dialog, label = self.progdialog()
@@ -447,6 +511,7 @@ class kugiDialog(QtWidgets.QDialog, FORM_CLASS):
         layer.deleteAttribute(idx)
         layer.commitChanges()
         #print ("sudah copy value")
+    
     def adding_attributes(self):
         #run = self.get_matched()
         #FUNGSI PASTIKAN TIPE DATA MAPPING FIELD SUDAH SAMA
